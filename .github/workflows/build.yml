@@ -46,7 +46,7 @@ jobs:
             --host=mipsel-linux-gnu \
             --prefix="$SYSROOT" \
             --enable-static \
-            --disable-shared \
+            --disable-shared \y
             --without-debug \
             --without-tests \
             --without-cxx-binding \
@@ -56,7 +56,8 @@ jobs:
             CC=mipsel-linux-gnu-gcc
 
           make -j2
-          make install
+          make install 
+          STRIPPROG=mipsel-linux-gnu-strip
 
           mkdir -p "$SYSROOT/include/ncurses/ncurses"
           for f in "$SYSROOT"/include/ncurses/*.h; do
