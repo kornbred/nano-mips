@@ -1,0 +1,109 @@
+
+name: Build nano for MIPS
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/build.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            gcc-mipsel-linux-gnu \
+            g++-mipsel-linux-gnu \
+            wget \
+            texinfo \
+            file \
+            binutils-mipsel-linux-gnu
+
+      - name: Prepare workspace
+        run: |
+          mkdir -p "$HOME/mips-build"
+          cd "$HOME/mips-build"
+          echo "WORKSPACE=$HOME/mips-build" >> "$GITHUB_ENV"
+          echo "SYSROOT=$HOME/mips-build/sysroot" >> "$GITHUB_ENV"
+
+      - name: Build static ncurses
+        run: |
+          cd "$WORKSPACE"
+          wget -q https://ftp.gnu.org/gnu/ncurses/ncurses-6.4.tar.gz
+          tar -xzf ncurses-6.4.tar.gz
+          cd ncurses-6.4
+
+          ./configure \
+            --host=mipsel-linux-gnu \
+            --prefix="$SYSROOT" \
+            --enable-static \
+            --disable-shared \
+            --without-debug \
+            --without-tests \
+            --without-cxx-binding \
+            --with-normal \
+            --disable-widec \
+            --with-fallbacks=linux,screen,vt100,xterm \
+            CC=mipsel-linux-gnu-gcc
+
+          make -j2
+          make install
+
+          mkdir -p "$SYSROOT/include/ncurses/ncurses"
+          for f in "$SYSROOT"/include/ncurses/*.h; do
+            [ -f "$f" ] || continue
+            ln -sf "../$(basename "$f")" \
+              "$SYSROOT/include/ncurses/ncurses/$(basename "$f")"
+          done
+
+      - name: Build nano
+        run: |
+          cd "$WORKSPACE"
+          wget -q https://www.nano-editor.org/dist/v7/nano-7.2.tar.xz
+          tar -xf nano-7.2.tar.xz
+          cd nano-7.2
+
+          PKG_CONFIG_PATH="$SYSROOT/lib/pkgconfig" \
+          ./configure \
+            --host=mipsel-linux-gnu \
+            --prefix=/usr/local \
+            --disable-nls \
+            --disable-utf8 \
+            --enable-tiny \
+            CC=mipsel-linux-gnu-gcc \
+            CPPFLAGS="-I$SYSROOT/include/ncurses" \
+            LDFLAGS="-L$SYSROOT/lib -static"
+
+          make -j2
+          cp src/nano "$WORKSPACE/nano-mipsel"
+
+      - name: Verify binary
+        run: |
+          file "$WORKSPACE/nano-mipsel"
+          mipsel-linux-gnu-readelf -h "$WORKSPACE/nano-mipsel"
+          mipsel-linux-gnu-readelf -l "$WORKSPACE/nano-mipsel" \
+            | tee "$WORKSPACE/program-headers.txt"
+
+          if grep -q INTERP "$WORKSPACE/program-headers.txt"; then
+            echo "ERROR: Binary has a dynamic interpreter."
+            exit 1
+          fi
+
+          chmod +x "$WORKSPACE/nano-mipsel"
+
+      - name: Upload compiled binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: nano-mipsel
+          path: ${{ env.WORKSPACE }}/nano-mipsel
+          if-no-files-found: error
+          retention-days: 30
