@@ -1,3 +1,4 @@
+
 name: Build nano for MIPS
 
 on:
@@ -48,6 +49,7 @@ jobs:
             --prefix="$SYSROOT" \
             --enable-static \
             --disable-shared \
+            --disable-stripping \
             --without-debug \
             --without-tests \
             --without-cxx-binding \
@@ -64,7 +66,7 @@ jobs:
       - name: Install ncurses
         run: |
           cd "$WORKSPACE/ncurses-6.4"
-          make install INSTALL_PROGRAM='install -c'
+          make install
 
           mkdir -p "$SYSROOT/include/ncurses/ncurses"
           for f in "$SYSROOT"/include/ncurses/*.h; do
