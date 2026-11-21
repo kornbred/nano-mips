@@ -42,22 +42,23 @@ jobs:
           tar -xzf ncurses-6.4.tar.gz
           cd ncurses-6.4
 
-          ./configure \
-            --host=mipsel-linux-gnu \
-            --prefix="$SYSROOT" \
-            --enable-static \
-            --disable-shared \y
-            --without-debug \
-            --without-tests \
-            --without-cxx-binding \
-            --with-normal \
-            --disable-widec \
-            --with-fallbacks=linux,screen,vt100,xterm \
-            CC=mipsel-linux-gnu-gcc
+          
+       ./configure \
+          --host=mipsel-linux-gnu \
+          --prefix="$SYSROOT" \
+          --enable-static \
+          --disable-shared \
+          --without-debug \
+          --without-tests \
+          --without-cxx-binding \
+          --with-normal \
+          --disable-widec \
+				  --with-fallbacks=linux,screen,vt100,xterm \
+          CC=mipsel-linux-gnu-gcc
 
-          make -j2
-          make install 
-          STRIPPROG=mipsel-linux-gnu-strip
+        make -j2
+        make install STRIPPROG=mipsel-linux-gnu-strip
+
 
           mkdir -p "$SYSROOT/include/ncurses/ncurses"
           for f in "$SYSROOT"/include/ncurses/*.h; do
